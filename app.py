@@ -5,6 +5,7 @@
 import os
 import pickle
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 from werkzeug.security import generate_password_hash, check_password_hash
 from config import SECRET_KEY, SESSION_TYPE, SESSION_PERMANENT, CREDENTIALS_FILE, SCOPES, REDIRECT_URI
 
@@ -523,16 +524,18 @@ def import_google_tasks():
     """
     try:
         service = get_calendar_service(current_user.id)
+
+        # Get current date and start/end of current week in UTC
         today = datetime.now(timezone.utc)
         start_of_week = today - timedelta(days=today.weekday())
         start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
         end_of_week = start_of_week + timedelta(days=7)
 
+        # Fetch events from Google Calendar
         events_result = service.events().list(
             calendarId='primary',
             timeMin=start_of_week.isoformat(),
             timeMax=end_of_week.isoformat(),
-            maxResults=50,
             singleEvents=True,
             orderBy='startTime'
         ).execute()
@@ -557,19 +560,19 @@ def import_google_tasks():
             duration_hours = (dt_end - dt_start).total_seconds() / 3600
             duration = max(1, int(round(duration_hours)))
 
-            # Avoid duplicate tasks
+            # Avoid duplicate tasks by title+time+day
             existing_tasks = db.get_tasks_by_day_and_time(current_user.id, day, hour)
-            if any(task['title'] == title for task in existing_tasks):
-                continue
-
-            db.add_task(title, description, "Medium", day, hour, duration, current_user.id)
-            imported += 1
+            if not any(task['title'] == title for task in existing_tasks):
+                db.add_task(title, description, "Medium", day, hour, duration, current_user.id)
+                imported += 1
 
         flash(f"{imported} events imported from Google Calendar", "success")
         return redirect(url_for("weekly_schedule"))
+    
     except Exception as e:
         flash(f"Error importing from Google Calendar: {str(e)}", "error")
         return redirect(url_for("weekly_schedule"))
+
 
 
 @app.route("/sync_all_tasks_to_google", methods=["POST"])
