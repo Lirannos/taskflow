@@ -20,6 +20,14 @@
     min-width: 800px; /* Prevents table from collapsing on narrow screens */
 }
 
+#weekly-schedule th:first-child,
+#weekly-schedule td:first-child {
+    width: 110px;
+    white-space: nowrap;
+    text-align: left;
+    padding-left: 10px;
+}
+
 #weekly-schedule th,
 #weekly-schedule td {
     border: 1px solid #ddd;
