@@ -20,7 +20,6 @@ from flask_login import LoginManager, login_user, logout_user, login_required, U
 import sqlite3
 from db.task_db import TaskDB
 from db.user_db import get_user_by_id, get_user_by_username, add_user, create_users_table
-from utils.availability_manager import is_slot_free, mark_task_as_busy
 
 # Google Calendar utilities
 from utils.google_calendar import (
@@ -262,8 +261,6 @@ def handle_manual_task(data):
             current_user.id
         )
 
-        mark_task_as_busy(current_user.id, data['day'], data['time'], 24 - start_hour)
-
         # Add remaining to next day
         next_day = get_next_day(data['day'])
         db.add_task(
@@ -276,7 +273,6 @@ def handle_manual_task(data):
             current_user.id
         )
 
-        mark_task_as_busy(current_user.id, next_day, "00:00", task_duration - (24 - start_hour))
 
         return first_task_id  # נחזיר את ה-ID של החלק הראשון
 
@@ -290,8 +286,6 @@ def handle_manual_task(data):
         data['duration'],
         current_user.id
     )
-
-    mark_task_as_busy(current_user.id, data['day'], data['time'], int(data['duration']))
 
     return new_task_id
 
@@ -327,9 +321,6 @@ def handle_auto_task(data):
         )
         print(f"[DEBUG] Inserted task: {task_id}")
 
-        # Update in-memory availability
-        mark_task_as_busy(current_user.id, day, time, int(data['duration']))
-
         return task_id, day, time
 
     except Exception as e:
@@ -349,10 +340,6 @@ def delete_task(task_id):
             return jsonify({'success': False, 'message': 'Task not found'}), 404
 
         db.delete_task(task_id, current_user.id)
-
-        # Update in-memory availability
-        from utils.availability_manager import mark_task_as_free
-        mark_task_as_free(current_user.id, task['day'], task['time'], int(task['duration']))
 
         return jsonify({'success': True, 'message': 'Task deleted successfully'})
     except Exception as e:

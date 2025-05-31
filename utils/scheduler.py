@@ -1,5 +1,4 @@
 from datetime import datetime
-from utils.availability_manager import initialize_availability_for_user
 
 # Preferred scheduling hours per task priority
 PRIORITY_HOURS = {
