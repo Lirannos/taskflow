@@ -20,7 +20,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, U
 import sqlite3
 from db.task_db import TaskDB
 from db.user_db import get_user_by_id, get_user_by_username, add_user, create_users_table
-from utils.availability_manager import is_slot_free, mark_task_as_busy, initialize_availability
+from utils.availability_manager import is_slot_free, mark_task_as_busy
 
 # Google Calendar utilities
 from utils.google_calendar import (
@@ -131,7 +131,7 @@ def get_tasks_json():
     time = request.args.get('time')
 
     print(f"[DEBUG] Filtering tasks for user={current_user.id} day={day}, time={time}")
-    
+
     try:
         if day and time:
             tasks_list = db.get_tasks_by_day_and_time(current_user.id, day, time)
@@ -607,36 +607,9 @@ def sync_all_tasks_to_google():
 
     return redirect(url_for("weekly_schedule"))
 
-def initialize_all_users_availability():
-    """Load all users' tasks into memory when the server starts.""" 
-
-    db = TaskDB()
-
-    # Connect to the users database to fetch all user IDs
-    conn = sqlite3.connect('users.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT id FROM users')
-    user_ids = [row[0] for row in cursor.fetchall()]
-    conn.close()
-
-    for user_id in user_ids:
-        initialize_availability(user_id)  # Create empty weekly schedule
-        tasks = db.get_tasks_json(user_id)  # Get all tasks of the user
-
-        for task in tasks:
-            mark_task_as_busy(
-                user_id=user_id,
-                day=task['day'],
-                start_time=task['time'],
-                duration=int(task['duration'])
-            )
-
-    print("[INFO] Finished loading all users' availability.")
-
 # ==========================================
 # Run the Flask Server
 # ==========================================
 
 if __name__ == "__main__":
-    initialize_all_users_availability()
     app.run(debug=True)
