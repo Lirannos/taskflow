@@ -129,6 +129,9 @@ def get_tasks_json():
     """
     day = request.args.get('day')
     time = request.args.get('time')
+
+    print(f"[DEBUG] Filtering tasks for user={current_user.id} day={day}, time={time}")
+    
     try:
         if day and time:
             tasks_list = db.get_tasks_by_day_and_time(current_user.id, day, time)

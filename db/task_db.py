@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime
 
 class TaskDB:
     DATABASE = 'gta.db'  # SQLite database file
@@ -70,14 +71,39 @@ class TaskDB:
         return tasks_list
 
     def get_tasks_by_day_and_time(self, user_id, day, time):
-        # Retrieves tasks for a specific day and time for a given user
+        """
+        Retrieves tasks that overlap with the given day and time for a given user.
+        This includes tasks that started earlier and span across the given time.
+        """
         conn = self.get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM tasks WHERE day = ? AND time = ? AND user_id = ?', (day, time, user_id))
-        tasks = cursor.fetchall()
-        tasks_list = [self.row_to_dict(row) for row in tasks]
+
+        # Parse the given time to extract hour as integer
+        try:
+            target_hour = int(datetime.strptime(time, "%H:%M").strftime("%H"))
+        except ValueError:
+            target_hour = int(time.split(":")[0])  # fallback if formatting fails
+
+        # Fetch all tasks on that day for the user
+        cursor.execute('SELECT * FROM tasks WHERE day = ? AND user_id = ?', (day, user_id))
+        all_tasks = cursor.fetchall()
+
+        overlapping_tasks = []
+
+        for row in all_tasks:
+            start_time = row["time"]
+            duration = int(row["duration"])
+
+            try:
+                start_hour = int(datetime.strptime(start_time, "%H:%M").strftime("%H"))
+            except ValueError:
+                start_hour = int(start_time.split(":")[0])
+
+            if target_hour in range(start_hour, start_hour + duration):
+                overlapping_tasks.append(self.row_to_dict(row))
+
         conn.close()
-        return tasks_list
+        return overlapping_tasks
 
     def row_to_dict(self, row):
         # Helper method to convert SQLite Row to dictionary

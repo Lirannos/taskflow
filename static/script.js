@@ -1,5 +1,5 @@
 // Order of days used for scheduling grid
-const DAYS_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+window.DAYS_ORDER = window.DAYS_ORDER || ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 // Run after DOM is loaded
 document.addEventListener("DOMContentLoaded", function () {
@@ -171,17 +171,20 @@ function insertTaskIntoWeeklySchedule(task) {
     const startHour = parseInt(task.time.split(':')[0]);
     const duration = parseInt(task.duration) || 1;
 
-    for (let h = startHour; h < startHour + duration; h++) {
-        const hourStr = `${(h % 24).toString().padStart(2, '0')}:00`;
-        const dayIndex = (DAYS_ORDER.indexOf(task.day) + Math.floor(h / 24)) % 7;
+    for (let h = 0; h < duration; h++) {
+        const hour = (startHour + h) % 24;
+        const hourStr = hour.toString().padStart(2, '0') + ":00";
+        const dayIndex = (DAYS_ORDER.indexOf(task.day) + Math.floor((startHour + h) / 24)) % 7;
         const currentDay = DAYS_ORDER[dayIndex];
+
         const cell = document.querySelector(`td[data-day='${currentDay}'][data-hour='${hourStr}']`);
 
         if (cell) {
             cell.classList.add('has-task', 'clickable');
             cell.title = task.title;
             cell.setAttribute('data-task-id', task.task_id || task.id);
-            cell.onclick = () => openTasksModal(currentDay, hourStr);
+
+            cell.onclick = () => openTasksModal(currentDay, hourStr, task.time);
         }
     }
 }
@@ -263,41 +266,44 @@ async function deleteTask(taskId) {
 }
 
 // Open modal with all tasks for a specific time slot
-function openTasksModal(taskDay, taskHour) {
+function openTasksModal(taskDay, clickedHour, fetchHour = null) {
     const modal = document.getElementById('taskModal');
     if (modal) {
-        const modalContent = modal.querySelector('.modal-content');
+        const modalContent = document.getElementById('modalContent');
+        modalContent.className = 'task-popup-modal';
         modalContent.innerHTML = '';
 
         const closeBtn = document.createElement('span');
-        closeBtn.classList.add('close-modal-btn');
+        closeBtn.classList.add('close-btn');
         closeBtn.innerHTML = '&times;';
         closeBtn.onclick = () => closeModal('taskModal');
 
-        const title = document.createElement('strong');
-        title.innerText = `Tasks for ${taskDay} at ${taskHour}:`;
+        const title = document.createElement('h3');
+        title.innerText = `Tasks for ${taskDay} at ${clickedHour}:`;
 
         modalContent.appendChild(closeBtn);
         modalContent.appendChild(title);
-        modalContent.appendChild(document.createElement('br'));
 
         clearExistingTasks(modalContent);
 
-        fetch(`/api/tasks?day=${encodeURIComponent(taskDay)}&time=${encodeURIComponent(taskHour)}`)
+        const timeToFetch = fetchHour || clickedHour;
+
+        fetch(`/api/tasks?day=${encodeURIComponent(taskDay)}&time=${encodeURIComponent(timeToFetch)}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.tasks.length > 0) {
                     data.tasks.forEach(task => {
                         if (!modalContent.querySelector(`[data-task-id='${task.id}']`)) {
                             const taskDiv = document.createElement('div');
-                            taskDiv.classList.add('task');
+                            taskDiv.classList.add('task-entry');
                             taskDiv.dataset.taskId = task.id;
                             taskDiv.textContent = `${task.title}: ${task.description}`;
                             modalContent.appendChild(taskDiv);
                         }
                     });
                 } else {
-                    const noTask = document.createElement('p');
+                    const noTask = document.createElement('div');
+                    noTask.classList.add('task-entry');
                     noTask.textContent = 'No tasks found for this time.';
                     modalContent.appendChild(noTask);
                 }
@@ -306,12 +312,14 @@ function openTasksModal(taskDay, taskHour) {
             })
             .catch(error => {
                 console.error('Error fetching tasks:', error);
-                const errorMsg = document.createElement('p');
+                const errorMsg = document.createElement('div');
+                errorMsg.classList.add('task-entry');
                 errorMsg.textContent = 'Error loading tasks.';
                 modalContent.appendChild(errorMsg);
             });
     }
 }
+
 
 // Clear existing task nodes in modal to avoid duplication
 function clearExistingTasks(container) {
