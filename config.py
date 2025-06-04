@@ -1,11 +1,12 @@
-# config.py
+import os
 
 # Flask settings
-SECRET_KEY = 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
+SECRET_KEY = os.environ.get("SECRET_KEY") 
 SESSION_TYPE = 'filesystem'
 SESSION_PERMANENT = True
 
+
 # Google Calendar API
-CREDENTIALS_FILE = 'client_secret_1023653706146-dpktj6ab93uripnivbslhpi2ugo8t6o3.apps.googleusercontent.com.json'
+CREDENTIALS_FILE = os.environ.get("CREDENTIALS_FILE")  # path to .json
 SCOPES = ['https://www.googleapis.com/auth/calendar']
-REDIRECT_URI = 'http://localhost:5000/oauth2callback'
+REDIRECT_URI = os.environ.get("REDIRECT_URI")
